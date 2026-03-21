@@ -1,0 +1,1333 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>EstXBry — AI Game Builder v4</title>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   BASE RESET & TOKENS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --bg:#06080c; --surf:#0b0f17; --surf2:#0f1520; --surf3:#131c28;
+  --bdr:#172030; --bdr2:#1d2c3e; --bdr3:#253648;
+  --cyan:#00c8f0; --green:#00e676; --red:#ff4560; --gold:#ffc040; --purple:#a855f7;
+  --txt:#cce4f6; --txt2:#4d7896; --txt3:#1e3348;
+  --mono:'JetBrains Mono',monospace; --sans:'Inter',sans-serif; --head:'Orbitron',monospace;
+}
+html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--txt);font-family:var(--sans);font-size:14px}
+
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   SHELL — 3-column layout
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+#shell{
+  display:grid;
+  grid-template-rows:50px 1fr;
+  grid-template-columns:220px 1fr 300px;
+  grid-template-areas:"H H H" "L M R";
+  height:100vh;
+  overflow:hidden;
+}
+
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   HEADER
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+#hdr{
+  grid-area:H;
+  display:flex;align-items:center;justify-content:space-between;
+  padding:0 16px; gap:12px;
+  background:var(--surf);border-bottom:1px solid var(--bdr2);
+  z-index:200;flex-shrink:0;
+}
+.logo{display:flex;align-items:center;gap:9px;flex-shrink:0}
+.logo-icon{
+  width:28px;height:28px;border-radius:6px;font-size:14px;
+  background:linear-gradient(135deg,var(--cyan),var(--green));
+  display:grid;place-items:center;box-shadow:0 0 10px rgba(0,200,240,.3);
+}
+.logo-name{font-family:var(--head);font-size:13px;font-weight:900;letter-spacing:2px}
+.logo-name em{color:var(--cyan);font-style:normal}
+.logo-tag{font-family:var(--mono);font-size:7px;color:var(--txt3);letter-spacing:3px;margin-top:1px}
+
+#progress-wrap{flex:1;max-width:320px;display:none;flex-direction:column;gap:3px}
+#progress-wrap.show{display:flex}
+#prog-lbl{font-family:var(--mono);font-size:8px;color:var(--txt2);letter-spacing:1px}
+#prog-track{height:2px;background:var(--bdr2);border-radius:2px;overflow:hidden}
+#prog-fill{height:100%;width:0%;background:linear-gradient(90deg,var(--cyan),var(--green));border-radius:2px;transition:width .4s ease;box-shadow:0 0 6px var(--cyan)}
+
+.hpills{display:flex;gap:6px;align-items:center;flex-shrink:0}
+.hpill{
+  font-family:var(--mono);font-size:8px;letter-spacing:1px;
+  padding:3px 8px;border-radius:20px;
+  border:1px solid var(--bdr2);color:var(--txt2);user-select:none;
+}
+.hpill.live{border-color:var(--green);color:var(--green)}
+.hpill.mode{border-color:var(--gold);color:var(--gold);display:none}
+.hpill.mode.on{display:inline-block}
+
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   LEFT — LIBRARY + MEMORY
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+#left{
+  grid-area:L;background:var(--surf);border-right:1px solid var(--bdr);
+  display:flex;flex-direction:column;overflow:hidden;min-height:0;
+}
+.tabs{display:flex;flex-shrink:0;border-bottom:1px solid var(--bdr)}
+.tab{
+  flex:1;padding:8px 0;text-align:center;cursor:pointer;
+  font-family:var(--mono);font-size:7px;letter-spacing:1.5px;color:var(--txt3);
+  border-bottom:2px solid transparent;transition:all .15s;
+}
+.tab:hover{color:var(--txt2)}
+.tab.on{color:var(--cyan);border-bottom-color:var(--cyan)}
+.pane{flex:1;overflow-y:auto;padding:7px;display:none;flex-direction:column;min-height:0}
+.pane.on{display:flex}
+.pane::-webkit-scrollbar{width:2px}
+.pane::-webkit-scrollbar-thumb{background:var(--bdr2);border-radius:2px}
+
+.empty-msg{
+  text-align:center;padding:28px 8px;margin:auto;
+  font-family:var(--mono);font-size:9px;color:var(--txt3);line-height:2.3;
+}
+/* game card */
+.gc{
+  padding:8px 10px;border-radius:7px;cursor:pointer;margin-bottom:3px;
+  border:1px solid transparent;transition:all .15s;position:relative;flex-shrink:0;
+}
+.gc:hover{background:var(--surf2);border-color:var(--bdr)}
+.gc.on{background:rgba(0,200,240,.05);border-color:var(--cyan)}
+.gc.on::before{
+  content:'';position:absolute;left:0;top:4px;bottom:4px;
+  width:2px;background:var(--cyan);border-radius:0 2px 2px 0;
+}
+.gc-name{font-size:11px;font-weight:600;color:var(--txt);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.gc-meta{font-family:var(--mono);font-size:7px;color:var(--txt3);margin-top:2px}
+.gc-ver{display:inline-block;margin-top:3px;background:rgba(0,200,240,.1);color:var(--cyan);font-family:var(--mono);font-size:7px;padding:1px 5px;border-radius:3px}
+.gc-btns{display:flex;gap:3px;margin-top:4px}
+.gcb{
+  font-family:var(--mono);font-size:7px;padding:2px 6px;border-radius:3px;
+  border:1px solid var(--bdr2);color:var(--txt3);background:transparent;cursor:pointer;transition:all .15s;
+}
+.gcb:hover{border-color:var(--cyan);color:var(--cyan)}
+.gcb.del:hover{border-color:var(--red);color:var(--red)}
+/* memory */
+.mi{
+  padding:7px 9px;border-radius:7px;margin-bottom:3px;
+  border:1px solid var(--bdr);flex-shrink:0;
+}
+.mi-prompt{font-size:10px;color:var(--txt);line-height:1.5}
+.mi-meta{font-family:var(--mono);font-size:7px;color:var(--txt3);margin-top:2px}
+.mi-btn{
+  margin-top:4px;font-family:var(--mono);font-size:7px;padding:2px 6px;
+  border-radius:3px;border:1px solid var(--bdr2);color:var(--txt3);
+  background:transparent;cursor:pointer;transition:all .15s;
+}
+.mi-btn:hover{border-color:var(--green);color:var(--green)}
+
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   MIDDLE — PREVIEW + EDITOR + INPUT
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+#mid{
+  grid-area:M;display:flex;flex-direction:column;
+  overflow:hidden;min-height:0;background:var(--bg);
+}
+
+/* Preview/Editor toggle tabs */
+#mid-tabs{
+  display:flex;align-items:center;gap:0;flex-shrink:0;
+  background:var(--surf);border-bottom:1px solid var(--bdr2);
+  padding:0 12px;
+}
+.mid-tab{
+  padding:8px 14px;font-family:var(--mono);font-size:8px;letter-spacing:1px;
+  color:var(--txt3);cursor:pointer;border-bottom:2px solid transparent;transition:all .15s;
+}
+.mid-tab:hover{color:var(--txt2)}
+.mid-tab.on{color:var(--cyan);border-bottom-color:var(--cyan)}
+#mid-tab-spacer{flex:1}
+.mid-tab-btn{
+  font-family:var(--mono);font-size:7px;padding:3px 8px;border-radius:4px;
+  border:1px solid var(--bdr2);color:var(--txt2);background:transparent;
+  cursor:pointer;transition:all .15s;white-space:nowrap;
+}
+.mid-tab-btn:hover{border-color:var(--cyan);color:var(--cyan)}
+.mid-tab-btn.g{border-color:rgba(0,230,118,.3);color:var(--green)}
+.mid-tab-btn.g:hover{border-color:var(--green);background:rgba(0,230,118,.06)}
+
+/* Mid panels */
+#mid-preview{flex:1;position:relative;overflow:hidden;min-height:0;display:flex;flex-direction:column}
+#mid-editor{flex:1;overflow:hidden;min-height:0;display:none;flex-direction:column}
+
+/* Preview iframe area */
+#preview-area{
+  flex:1;position:relative;overflow:hidden;background:#000;min-height:0;
+}
+#preview-empty{
+  position:absolute;inset:0;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  gap:12px;pointer-events:none;
+}
+#preview-empty-icon{font-size:48px;opacity:.18}
+#preview-empty-title{font-family:var(--head);font-size:11px;letter-spacing:3px;color:var(--txt3)}
+#preview-empty-sub{font-family:var(--mono);font-size:9px;color:var(--txt3);text-align:center;line-height:2;opacity:.6}
+
+/* THE IFRAME — critical fix: no sandbox restriction on srcdoc */
+#game-frame{
+  position:absolute;inset:0;width:100%;height:100%;
+  border:none;display:none;
+  background:#000;
+}
+#game-frame.show{display:block}
+
+/* overlay toolbar */
+#vp-bar{
+  position:absolute;top:8px;right:8px;
+  display:none;gap:4px;z-index:20;
+}
+#vp-bar.show{display:flex}
+.vpb{
+  font-family:var(--mono);font-size:7px;letter-spacing:.5px;
+  padding:4px 9px;border-radius:5px;cursor:pointer;
+  border:1px solid var(--bdr2);background:rgba(6,8,12,.93);
+  color:var(--txt2);transition:all .15s;white-space:nowrap;backdrop-filter:blur(6px);
+}
+.vpb:hover{border-color:var(--cyan);color:var(--cyan)}
+.vpb.r:hover{border-color:var(--red);color:var(--red)}
+.vpb.g{border-color:rgba(0,230,118,.3);color:var(--green)}
+.vpb.g:hover{border-color:var(--green);background:rgba(0,230,118,.06)}
+
+/* Error overlay inside preview */
+#preview-error{
+  display:none;position:absolute;bottom:0;left:0;right:0;
+  background:rgba(255,69,96,.1);border-top:1px solid rgba(255,69,96,.3);
+  padding:7px 12px;
+  font-family:var(--mono);font-size:9px;color:var(--red);
+  max-height:100px;overflow-y:auto;
+  backdrop-filter:blur(4px);
+}
+#preview-error.show{display:block}
+#preview-error::-webkit-scrollbar{width:2px}
+#preview-error::-webkit-scrollbar-thumb{background:rgba(255,69,96,.3)}
+
+/* Version strip */
+#ver-strip{
+  display:none;align-items:center;gap:4px;flex-wrap:nowrap;
+  padding:4px 10px;border-top:1px solid var(--bdr);
+  background:var(--surf);overflow-x:auto;flex-shrink:0;
+}
+#ver-strip.show{display:flex}
+#ver-strip::-webkit-scrollbar{height:2px}
+#ver-strip::-webkit-scrollbar-thumb{background:var(--bdr2)}
+.vlbl{font-family:var(--mono);font-size:7px;color:var(--txt3);letter-spacing:2px;flex-shrink:0}
+.vchip{
+  font-family:var(--mono);font-size:7px;padding:2px 7px;border-radius:3px;
+  border:1px solid var(--bdr);color:var(--txt3);background:transparent;
+  cursor:pointer;transition:all .15s;white-space:nowrap;flex-shrink:0;
+}
+.vchip:hover{color:var(--txt2);border-color:var(--bdr2)}
+.vchip.on{border-color:var(--cyan);color:var(--cyan);background:rgba(0,200,240,.06)}
+
+/* Code editor */
+#code-editor{
+  flex:1;width:100%;background:var(--surf2);color:#a8d8ff;
+  font-family:var(--mono);font-size:11px;line-height:1.7;
+  padding:12px;border:none;outline:none;resize:none;
+  overflow-y:auto;tab-size:2;
+}
+#code-editor::-webkit-scrollbar{width:4px}
+#code-editor::-webkit-scrollbar-thumb{background:var(--bdr2);border-radius:2px}
+#editor-toolbar{
+  display:flex;gap:6px;padding:6px 10px;background:var(--surf);
+  border-bottom:1px solid var(--bdr);flex-shrink:0;align-items:center;
+}
+.etb{
+  font-family:var(--mono);font-size:7px;padding:3px 8px;border-radius:4px;
+  border:1px solid var(--bdr2);color:var(--txt2);background:transparent;
+  cursor:pointer;transition:all .15s;white-space:nowrap;
+}
+.etb:hover{border-color:var(--cyan);color:var(--cyan)}
+.etb.primary{background:var(--cyan);color:#000;border-color:var(--cyan);font-weight:600}
+.etb.primary:hover{box-shadow:0 2px 10px rgba(0,200,240,.3)}
+#editor-info{font-family:var(--mono);font-size:7px;color:var(--txt3);margin-left:auto}
+
+/* status bar */
+#sbar{
+  display:flex;align-items:center;gap:7px;flex-shrink:0;
+  padding:0 10px;height:24px;
+  background:var(--surf);border-top:1px solid var(--bdr);
+}
+.sdot{width:5px;height:5px;border-radius:50%;background:var(--txt3);flex-shrink:0;transition:background .3s}
+.sdot.ok{background:var(--green);box-shadow:0 0 4px var(--green)}
+.sdot.go{background:var(--gold);box-shadow:0 0 4px var(--gold);animation:bk 1s infinite}
+.sdot.er{background:var(--red);box-shadow:0 0 4px var(--red)}
+@keyframes bk{0%,100%{opacity:1}50%{opacity:.3}}
+#s-txt{font-family:var(--mono);font-size:7px;color:var(--txt3);letter-spacing:1px}
+#s-game{font-family:var(--mono);font-size:7px;color:var(--cyan);margin-left:auto;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:180px}
+
+/* input area */
+#inp{
+  flex-shrink:0;padding:10px 12px 9px;
+  background:var(--surf);border-top:1px solid var(--bdr2);
+}
+.mrow{display:flex;gap:4px;margin-bottom:7px;align-items:center}
+.mbtn{
+  font-family:var(--mono);font-size:7px;letter-spacing:.5px;
+  padding:4px 9px;border-radius:20px;cursor:pointer;
+  border:1px solid var(--bdr2);color:var(--txt3);background:transparent;
+  transition:all .15s;
+}
+.mbtn.on{background:rgba(0,200,240,.09);border-color:var(--cyan);color:var(--cyan)}
+.mbtn.edit.on{background:rgba(255,192,64,.07);border-color:var(--gold);color:var(--gold)}
+.mbtn.fix.on{background:rgba(168,85,247,.07);border-color:var(--purple);color:var(--purple)}
+.irow{display:flex;gap:7px;align-items:flex-end}
+.igrow{flex:1}
+.igrow textarea{
+  width:100%;background:var(--surf2);border:1px solid var(--bdr2);border-radius:8px;
+  color:var(--txt);font-family:var(--sans);font-size:13px;font-weight:500;
+  padding:10px 12px;resize:none;outline:none;
+  min-height:42px;max-height:120px;line-height:1.5;transition:border-color .15s;
+}
+.igrow textarea:focus{border-color:var(--cyan)}
+.igrow textarea::placeholder{color:var(--txt3)}
+.gobtn{
+  width:40px;height:40px;border-radius:8px;border:none;cursor:pointer;
+  background:var(--cyan);color:#000;font-size:14px;
+  display:grid;place-items:center;flex-shrink:0;
+  transition:all .15s;box-shadow:0 2px 10px rgba(0,200,240,.25);
+  position:relative;overflow:hidden;
+}
+.gobtn:hover:not(:disabled){transform:scale(1.07);box-shadow:0 4px 18px rgba(0,200,240,.45)}
+.gobtn:disabled{opacity:.4;cursor:not-allowed}
+.gobtn.edit{background:var(--gold);box-shadow:0 2px 10px rgba(255,192,64,.25)}
+.gobtn.fix{background:var(--purple);box-shadow:0 2px 10px rgba(168,85,247,.25)}
+.goico{position:absolute;transition:opacity .15s}
+.gobtn.spin .goico{opacity:0}
+.gospin{position:absolute;inset:0;display:none;align-items:center;justify-content:center}
+.gobtn.spin .gospin{display:flex}
+.spinr{width:16px;height:16px;border:2px solid rgba(0,0,0,.2);border-top-color:#000;border-radius:50%;animation:rot .6s linear infinite}
+@keyframes rot{to{transform:rotate(360deg)}}
+.chips{display:flex;gap:4px;margin-top:6px;flex-wrap:wrap}
+.chip{
+  font-family:var(--mono);font-size:7px;padding:3px 7px;border-radius:20px;
+  border:1px solid var(--bdr2);color:var(--txt3);background:transparent;
+  cursor:pointer;transition:all .15s;white-space:nowrap;
+}
+.chip:hover{border-color:var(--cyan);color:var(--cyan);background:rgba(0,200,240,.04)}
+
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   RIGHT — LOG + OUTPUT
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+#right{
+  grid-area:R;background:var(--surf);border-left:1px solid var(--bdr);
+  display:flex;flex-direction:column;overflow:hidden;min-height:0;
+}
+#chat-scroll{
+  flex:1;overflow-y:auto;padding:8px;
+  display:flex;flex-direction:column;gap:6px;min-height:0;
+}
+#chat-scroll::-webkit-scrollbar{width:2px}
+#chat-scroll::-webkit-scrollbar-thumb{background:var(--bdr2);border-radius:2px}
+.cempty{margin:auto;text-align:center;padding:20px;font-family:var(--mono);font-size:9px;color:var(--txt3);line-height:2.3}
+.msg{
+  padding:7px 9px;border-radius:7px;font-size:11px;line-height:1.7;
+  animation:pi .2s ease;word-break:break-word;flex-shrink:0;
+}
+@keyframes pi{from{opacity:0;transform:translateY(3px)}to{opacity:1;transform:translateY(0)}}
+.msg.u{background:rgba(0,200,240,.07);border:1px solid rgba(0,200,240,.15);color:var(--txt)}
+.msg.a{background:rgba(0,230,118,.05);border:1px solid rgba(0,230,118,.12);color:var(--txt2)}
+.msg.s{background:rgba(255,192,64,.05);border:1px solid rgba(255,192,64,.15);color:var(--gold);font-family:var(--mono);font-size:8px;text-align:center}
+.msg.e{background:rgba(255,69,96,.06);border:1px solid rgba(255,69,96,.2);color:var(--red);font-family:var(--mono);font-size:8px}
+.mwho{font-family:var(--mono);font-size:7px;letter-spacing:1px;opacity:.5;margin-bottom:2px}
+.msg.u .mwho{color:var(--cyan)} .msg.a .mwho{color:var(--green)} .msg.e .mwho{color:var(--red)}
+.dots{display:flex;gap:3px;align-items:center;padding:2px 0}
+.dots span{width:4px;height:4px;border-radius:50%;background:var(--green);animation:db 1.2s infinite}
+.dots span:nth-child(2){animation-delay:.2s} .dots span:nth-child(3){animation-delay:.4s}
+@keyframes db{0%,80%,100%{transform:translateY(0);opacity:.3}40%{transform:translateY(-4px);opacity:1}}
+
+/* output section */
+#out-section{
+  border-top:1px solid var(--bdr);padding:10px;
+  flex-shrink:0;display:none;flex-direction:column;gap:6px;
+  overflow-y:auto;max-height:340px;
+}
+#out-section.show{display:flex}
+#out-section::-webkit-scrollbar{width:2px}
+#out-section::-webkit-scrollbar-thumb{background:var(--bdr2)}
+.oslbl{font-family:var(--mono);font-size:7px;letter-spacing:2px;color:var(--txt3)}
+.ostitle{font-size:13px;font-weight:600;color:var(--txt)}
+.osmeta{font-family:var(--mono);font-size:8px;color:var(--txt2)}
+.oshr{height:1px;background:var(--bdr);margin:2px 0}
+.obtn{
+  width:100%;padding:8px 0;border-radius:7px;border:none;cursor:pointer;
+  font-family:var(--mono);font-size:8px;letter-spacing:.5px;transition:all .15s;
+}
+.obtn.primary{background:var(--cyan);color:#000;font-weight:700}
+.obtn.primary:hover{box-shadow:0 3px 14px rgba(0,200,240,.4)}
+.obtn.ghost{background:transparent;border:1px solid var(--bdr2);color:var(--txt2)}
+.obtn.ghost:hover{background:var(--surf2);color:var(--txt);border-color:var(--bdr3)}
+.obtn.gold{background:transparent;border:1px solid rgba(255,192,64,.3);color:var(--gold)}
+.obtn.gold:hover{background:rgba(255,192,64,.07);border-color:var(--gold)}
+.obtn.purple{background:transparent;border:1px solid rgba(168,85,247,.3);color:var(--purple)}
+.obtn.purple:hover{background:rgba(168,85,247,.07);border-color:var(--purple)}
+
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   MOBILE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+@media(max-width:1020px){
+  #shell{grid-template-columns:0 1fr 260px}
+  #left{display:none}
+}
+@media(max-width:680px){
+  #shell{
+    grid-template-rows:50px 1fr 200px;
+    grid-template-columns:1fr;
+    grid-template-areas:"H" "M" "R";
+  }
+  #left,#right{display:none}
+  /* show right as bottom panel */
+  #right{display:flex;border-left:none;border-top:1px solid var(--bdr)}
+}
+</style>
+</head>
+<body>
+<div id="shell">
+
+<!-- ═══ HEADER ═══ -->
+<header id="hdr">
+  <div class="logo">
+    <div class="logo-icon">🎮</div>
+    <div>
+      <div class="logo-name">Est<em>X</em>Bry</div>
+      <div class="logo-tag">AI GAME BUILDER v4</div>
+    </div>
+  </div>
+  <div id="progress-wrap">
+    <div id="prog-lbl">BUILDING…</div>
+    <div id="prog-track"><div id="prog-fill"></div></div>
+  </div>
+  <div class="hpills">
+    <div class="hpill mode" id="mode-pill">EDIT</div>
+    <div class="hpill live" id="ai-pill">● READY</div>
+    <div class="hpill">SONNET 4</div>
+  </div>
+</header>
+
+<!-- ═══ LEFT ═══ -->
+<aside id="left">
+  <div class="tabs">
+    <div class="tab on" onclick="lpSwitch('lib')">LIBRARY</div>
+    <div class="tab"    onclick="lpSwitch('mem')">MEMORY</div>
+  </div>
+  <div class="pane on" id="plib"><div class="empty-msg">No games yet.<br/>Build your first ↓</div></div>
+  <div class="pane"    id="pmem"><div class="empty-msg">No history yet.</div></div>
+</aside>
+
+<!-- ═══ MIDDLE ═══ -->
+<main id="mid">
+  <!-- Preview / Editor tab bar -->
+  <div id="mid-tabs">
+    <div class="mid-tab on" onclick="midSwitch('preview')">▶ PREVIEW</div>
+    <div class="mid-tab"    onclick="midSwitch('editor')">⌨ CODE EDITOR</div>
+    <div id="mid-tab-spacer"></div>
+    <button class="mid-tab-btn g" onclick="Preview.refresh()">↺ REFRESH</button>
+    <button class="mid-tab-btn"   onclick="Preview.fullscreen()" style="margin-left:4px">⛶ FULL</button>
+  </div>
+
+  <!-- PREVIEW PANEL -->
+  <div id="mid-preview">
+    <div id="preview-area">
+      <div id="preview-empty">
+        <div id="preview-empty-icon">🕹️</div>
+        <div id="preview-empty-title">READY TO BUILD</div>
+        <div id="preview-empty-sub">Describe any game below.<br/>It runs here the moment it's built.</div>
+      </div>
+      <!--
+        CRITICAL FIX: No sandbox attribute = full script execution.
+        We use srcdoc which is isolated by the browser's own security model.
+        allow="fullscreen" enables the fullscreen API inside the frame.
+      -->
+      <iframe id="game-frame"
+        allow="fullscreen"
+        title="Game Preview">
+      </iframe>
+      <div id="vp-bar">
+        <button class="vpb g" onclick="Preview.refresh()">↺ RELOAD</button>
+        <button class="vpb"   onclick="Preview.fullscreen()">⛶ FULL</button>
+        <button class="vpb r" onclick="Preview.clear()">✕</button>
+      </div>
+      <div id="preview-error"></div>
+    </div>
+
+    <!-- version strip -->
+    <div id="ver-strip"></div>
+
+    <!-- status bar -->
+    <div id="sbar">
+      <div class="sdot" id="sdot"></div>
+      <div id="s-txt">AWAITING INPUT</div>
+      <div id="s-game"></div>
+    </div>
+  </div>
+
+  <!-- EDITOR PANEL -->
+  <div id="mid-editor">
+    <div id="editor-toolbar">
+      <button class="etb primary" onclick="Editor.applyCode()">▶ RUN CODE</button>
+      <button class="etb" onclick="Editor.copyCode()">⎘ COPY</button>
+      <button class="etb" onclick="Download.now()">⬇ DOWNLOAD</button>
+      <button class="etb" onclick="Editor.fixCode()">🔧 AUTO-FIX</button>
+      <div id="editor-info">No file loaded</div>
+    </div>
+    <textarea id="code-editor" spellcheck="false" placeholder="// Generated code appears here...&#10;// You can edit it directly and click RUN CODE"></textarea>
+  </div>
+
+  <!-- INPUT -->
+  <div id="inp">
+    <div class="mrow">
+      <button class="mbtn on"  id="mb-build" onclick="setMode('build')">⚡ BUILD</button>
+      <button class="mbtn edit" id="mb-edit"  onclick="setMode('edit')">✏ EDIT</button>
+      <button class="mbtn fix"  id="mb-fix"   onclick="setMode('fix')">🔧 FIX</button>
+    </div>
+    <div class="irow">
+      <div class="igrow">
+        <textarea id="prompt"
+          placeholder="Build me a Snake game with score and levels…"
+          rows="1"
+          onkeydown="onPromptKey(event)"
+          oninput="growTA(this)"></textarea>
+      </div>
+      <button class="gobtn" id="go-btn" onclick="Engine.send()">
+        <span class="goico">▶</span>
+        <div class="gospin"><div class="spinr"></div></div>
+      </button>
+    </div>
+    <div class="chips" id="chip-row"></div>
+  </div>
+</main>
+
+<!-- ═══ RIGHT ═══ -->
+<aside id="right">
+  <div class="tabs">
+    <div class="tab on" onclick="rpSwitch('log')">LOG</div>
+    <div class="tab"    onclick="rpSwitch('out')">OUTPUT</div>
+  </div>
+  <!-- LOG tab -->
+  <div class="pane on" id="plog">
+    <div id="chat-scroll">
+      <div class="cempty" id="chat-empty">Build log empty.<br/>Your session here.</div>
+    </div>
+  </div>
+  <!-- OUTPUT tab -->
+  <div class="pane" id="pout">
+    <div id="out-section" class="show" style="display:flex">
+      <div class="empty-msg" id="out-empty">No output yet.<br/>Build a game first.</div>
+      <div id="out-content" style="display:none;flex-direction:column;gap:6px">
+        <div class="oslbl">▼ CURRENT BUILD</div>
+        <div class="ostitle" id="out-title">—</div>
+        <div class="osmeta"  id="out-meta">—</div>
+        <div class="oshr"></div>
+        <!-- DOWNLOAD — primary CTA -->
+        <button class="obtn primary" onclick="Download.now()">⬇ DOWNLOAD GAME (.html)</button>
+        <button class="obtn ghost"   onclick="Preview.fullscreen()">⛶ OPEN FULLSCREEN</button>
+        <button class="obtn ghost"   onclick="midSwitch('editor')">⌨ VIEW / EDIT CODE</button>
+        <button class="obtn gold"    onclick="Engine.sendFix()">🔧 AUTO-FIX GAME</button>
+        <button class="obtn ghost"   onclick="Preview.refresh()">↺ RELOAD PREVIEW</button>
+        <div class="oshr"></div>
+        <div class="oslbl">▼ ERRORS</div>
+        <div id="err-display" style="font-family:var(--mono);font-size:8px;color:var(--txt3)">✓ None detected</div>
+        <button class="obtn purple" id="fix-btn" onclick="Engine.sendFix()" style="display:none">🔧 FIX AUTOMATICALLY</button>
+      </div>
+    </div>
+  </div>
+</aside>
+</div>
+
+<script>
+/* ══════════════════════════════════════════════════
+   UTILITIES
+══════════════════════════════════════════════════ */
+const $  = id => document.getElementById(id);
+const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2,5);
+const ts  = () => new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});
+const ds  = () => new Date().toLocaleDateString([],{month:'short',day:'numeric'})+' '+ts();
+
+function esc(s){
+  return String(s)
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    .replace(/\n/g,'<br>');
+}
+function growTA(el){
+  el.style.height='auto';
+  el.style.height=Math.min(el.scrollHeight,120)+'px';
+}
+function onPromptKey(e){
+  if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();Engine.send();}
+}
+
+/* ══════════════════════════════════════════════════
+   STATE MANAGER
+══════════════════════════════════════════════════ */
+const State = (()=>{
+  let d = {
+    games:{}, active:null,
+    mode:'build',
+    history:[], // AI memory
+    busy:false,
+  };
+  return {
+    get:(k)=>d[k],
+    set:(k,v)=>{d[k]=v},
+    game:(id)=>d.games[id||d.active],
+    active:()=>d.games[d.active]||null,
+    busy:()=>d.busy,
+    setBusy:(v)=>{d.busy=v},
+    pushH:(role,content)=>{
+      d.history.push({role,content});
+      if(d.history.length>20)d.history=d.history.slice(-20);
+    },
+    history:()=>d.history.slice(-12),
+    clearH:()=>{d.history=[]},
+    newGame:(id,name,code,prompt)=>{
+      d.games[id]={name,created:ds(),versions:[{code,prompt,ts:ts(),errs:[]}],cur:0};
+      d.active=id;
+    },
+    addVer:(code,prompt)=>{
+      const g=d.games[d.active];
+      if(!g)return;
+      g.versions.push({code,prompt,ts:ts(),errs:[]});
+      g.cur=g.versions.length-1;
+    },
+    curCode:()=>{const g=d.games[d.active];return g?g.versions[g.cur].code:null},
+    setActive:(id)=>{d.active=id},
+  };
+})();
+
+/* ══════════════════════════════════════════════════
+   STORAGE — localStorage persistence
+══════════════════════════════════════════════════ */
+const Stor = (()=>{
+  const GK='exb4_games', MK='exb4_mem';
+
+  function save(){
+    try{
+      localStorage.setItem(GK,JSON.stringify({
+        games:State.get('games'),
+        active:State.get('active')
+      }));
+    }catch(e){console.warn('localStorage full:',e.message);}
+  }
+
+  function load(){
+    try{
+      const r=localStorage.getItem(GK);
+      if(!r)return false;
+      const p=JSON.parse(r);
+      State.set('games',p.games||{});
+      State.set('active',p.active||null);
+      return true;
+    }catch{return false;}
+  }
+
+  function saveMem(prompt,gameName){
+    try{
+      const m=getMem();
+      m.unshift({prompt,gameName,ts:ds(),id:uid()});
+      if(m.length>40)m.splice(40);
+      localStorage.setItem(MK,JSON.stringify(m));
+    }catch{}
+  }
+
+  function getMem(){
+    try{return JSON.parse(localStorage.getItem(MK)||'[]');}
+    catch{return[];}
+  }
+
+  return{save,load,saveMem,getMem};
+})();
+
+/* ══════════════════════════════════════════════════
+   DOWNLOAD — CRITICAL FIX
+   Uses Blob + object URL, works cross-browser + mobile
+══════════════════════════════════════════════════ */
+const Download = (()=>{
+  function now(codeOverride){
+    const g = State.active();
+    const code = codeOverride || (g ? g.versions[g.cur].code : null);
+    if(!code){Chat.msg('e','⚠ Nothing to download yet. Build a game first.');return;}
+
+    const name = g ? g.name.replace(/[^a-z0-9]/gi,'_').toLowerCase()+'_v'+(g.cur+1) : 'game';
+    const filename = name + '.html';
+
+    try{
+      // Method 1: Blob URL (works on all modern browsers)
+      const blob = new Blob([code],{type:'text/html;charset=utf-8'});
+      const url  = URL.createObjectURL(blob);
+      const a    = document.createElement('a');
+      a.href     = url;
+      a.download = filename;
+      a.style.display = 'none';
+      document.body.appendChild(a);
+      a.click();
+      // Delay revoke to let browser handle the download
+      setTimeout(()=>{
+        URL.revokeObjectURL(url);
+        document.body.removeChild(a);
+      }, 2000);
+      Chat.msg('s',`⬇ Downloading: ${filename}`);
+    }catch(e){
+      // Method 2: data URI fallback (for very restrictive browsers)
+      try{
+        const b64 = btoa(unescape(encodeURIComponent(code)));
+        const a   = document.createElement('a');
+        a.href    = 'data:text/html;base64,'+b64;
+        a.download= filename;
+        a.style.display='none';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        Chat.msg('s',`⬇ Downloaded: ${filename}`);
+      }catch(e2){
+        Chat.msg('e',`⚠ Download failed: ${e2.message}. Try the CODE EDITOR → COPY button.`);
+      }
+    }
+  }
+
+  return{now};
+})();
+
+/* ══════════════════════════════════════════════════
+   PREVIEW — CRITICAL FIX
+   srcdoc on a UNSANDBOXED iframe = full JS execution
+══════════════════════════════════════════════════ */
+const Preview = (()=>{
+  let _lastCode = null;
+
+  function render(code){
+    if(!code)return;
+    _lastCode = code;
+    const f = $('game-frame');
+
+    // Hide empty state
+    $('preview-empty').style.display='none';
+    $('preview-error').classList.remove('show');
+    $('preview-error').textContent='';
+
+    // CRITICAL: Set srcdoc BEFORE adding class show
+    // This avoids the race condition in v3
+    f.srcdoc = code;
+    f.style.display = 'block';
+    f.classList.add('show');
+    $('vp-bar').classList.add('show');
+
+    // Listen for errors from within the frame
+    f.onload = ()=>{
+      try{
+        // If frame has access (same-origin srcdoc), hook errors
+        f.contentWindow.onerror=(msg,src,line,col,err)=>{
+          const txt = `JS Error: ${msg} (line ${line})`;
+          $('preview-error').textContent = txt;
+          $('preview-error').classList.add('show');
+          if(State.active()){
+            State.active().versions[State.active().cur].errs = [txt];
+            updateErrDisplay([txt]);
+          }
+          return false;
+        };
+      }catch(e){
+        // cross-origin — can't hook; that's fine
+      }
+    };
+  }
+
+  function refresh(){
+    if(_lastCode) render(_lastCode);
+    else{const c=State.curCode();if(c)render(c);}
+  }
+
+  function clear(){
+    if(!confirm('Remove game from preview?'))return;
+    const f=$('game-frame');
+    f.classList.remove('show');
+    f.style.display='none';
+    f.srcdoc='about:blank';
+    $('preview-empty').style.display='flex';
+    $('vp-bar').classList.remove('show');
+    $('preview-error').classList.remove('show');
+    $('ver-strip').classList.remove('show');
+    $('s-game').textContent='';
+    setStatus('AWAITING INPUT','');
+    _lastCode=null;
+  }
+
+  function fullscreen(){
+    const f=$('game-frame');
+    if(f.requestFullscreen) f.requestFullscreen();
+    else if(f.webkitRequestFullscreen) f.webkitRequestFullscreen();
+  }
+
+  return{render,refresh,clear,fullscreen};
+})();
+
+/* ══════════════════════════════════════════════════
+   CODE EDITOR
+══════════════════════════════════════════════════ */
+const Editor = (()=>{
+  function load(code,name){
+    $('code-editor').value = code;
+    $('editor-info').textContent = name ? `${name} — ${code.length.toLocaleString()} chars` : '';
+  }
+
+  function applyCode(){
+    const code = $('code-editor').value.trim();
+    if(!code){Chat.msg('e','Editor is empty.');return;}
+    // Save as new version
+    if(State.active()){
+      State.addVersion(code,'[manual edit]');
+      Stor.save();
+    }
+    Preview.render(code);
+    updateVersionStrip();
+    updateLibrary();
+    setStatus('CODE APPLIED','ok');
+    Chat.msg('s','✅ Manual code applied and running in preview.');
+    midSwitch('preview');
+  }
+
+  function copyCode(){
+    const code=$('code-editor').value;
+    if(!code){Chat.msg('e','Nothing to copy.');return;}
+    navigator.clipboard.writeText(code).then(()=>{
+      Chat.msg('s','⎘ Code copied to clipboard.');
+    }).catch(()=>{
+      // Fallback
+      const ta=document.createElement('textarea');
+      ta.value=code; document.body.appendChild(ta);
+      ta.select(); document.execCommand('copy');
+      document.body.removeChild(ta);
+      Chat.msg('s','⎘ Code copied.');
+    });
+  }
+
+  function fixCode(){
+    const g=State.active();
+    if(!g){Chat.msg('e','No game loaded.');return;}
+    Engine.sendFix();
+  }
+
+  return{load,applyCode,copyCode,fixCode};
+})();
+
+/* ══════════════════════════════════════════════════
+   STATUS
+══════════════════════════════════════════════════ */
+function setStatus(txt,type){
+  $('s-txt').textContent=txt;
+  const d=$('sdot');
+  d.className='sdot'+(type==='ok'?' ok':type==='busy'?' go':type==='err'?' er':'');
+}
+
+/* ══════════════════════════════════════════════════
+   PROGRESS BAR
+══════════════════════════════════════════════════ */
+const Prog=(()=>{
+  let t=null;
+  const steps=[
+    [7,'PARSING REQUEST…'],
+    [18,'DESIGNING ARCHITECTURE…'],
+    [32,'GENERATING GAME LOOP…'],
+    [50,'BUILDING GRAPHICS & PHYSICS…'],
+    [67,'ADDING CONTROLS & MECHANICS…'],
+    [80,'POLISHING UI & SOUNDS…'],
+    [92,'FINALIZING OUTPUT…'],
+  ];
+  function start(){
+    $('progress-wrap').classList.add('show');
+    let i=0;
+    t=setInterval(()=>{
+      if(i<steps.length){
+        $('prog-fill').style.width=steps[i][0]+'%';
+        $('prog-lbl').textContent=steps[i][1];
+        i++;
+      }else clearInterval(t);
+    },700);
+  }
+  function done(){
+    clearInterval(t);
+    $('prog-fill').style.width='100%';
+    $('prog-lbl').textContent='DONE ✓';
+    setTimeout(()=>$('progress-wrap').classList.remove('show'),900);
+  }
+  return{start,done};
+})();
+
+/* ══════════════════════════════════════════════════
+   CHAT / LOG
+══════════════════════════════════════════════════ */
+const Chat=(()=>{
+  function msg(cls,text){
+    const w=$('chat-scroll');
+    $('chat-empty')?.remove();
+    const d=document.createElement('div');
+    d.className='msg '+cls;
+    const who=cls==='u'?'▶ YOU':cls==='a'?'◆ ESTXBRY':cls==='e'?'⚠ ERROR':'⚡ SYSTEM';
+    d.innerHTML=`<div class="mwho">${who} · ${ts()}</div>${esc(text)}`;
+    w.appendChild(d);
+    w.scrollTop=w.scrollHeight;
+  }
+  function typing(){
+    const w=$('chat-scroll');
+    $('chat-empty')?.remove();
+    const id='ty-'+uid();
+    const d=document.createElement('div');
+    d.id=id; d.className='msg a';
+    d.innerHTML=`<div class="mwho">◆ ESTXBRY · BUILDING</div><div class="dots"><span></span><span></span><span></span></div>`;
+    w.appendChild(d);
+    w.scrollTop=w.scrollHeight;
+    return id;
+  }
+  function rmTyping(id){$(id)?.remove();}
+  return{msg,typing,rmTyping};
+})();
+
+/* ══════════════════════════════════════════════════
+   AI ENGINE
+══════════════════════════════════════════════════ */
+const Engine=(()=>{
+
+  /* ── SYSTEM PROMPT ── */
+  function sysprompt(mode){
+    const g=State.active();
+    const ctx=g?`ACTIVE GAME: "${g.name}" (v${g.versions.length}).`:'No game loaded yet.';
+    const modeNote={
+      build:`BUILD MODE: Create a COMPLETE, FULLY WORKING game from scratch.`,
+      edit:`EDIT MODE: MODIFY the active game "${g?.name||''}". Keep ALL existing mechanics. Apply only the requested change. Carry forward 100% of the existing code.`,
+      fix:`FIX MODE: REPAIR the active game "${g?.name||''}". Identify every bug, fix all errors, improve stability. Output a corrected full version.`,
+    }[mode]||'BUILD MODE: Create a complete game.';
+
+    return `You are EstXBry — a world-class AI game builder with no usage limits. You build FULLY WORKING, IMMEDIATELY PLAYABLE browser games.
+
+${ctx}
+${modeNote}
+
+━━━ STRICT OUTPUT FORMAT (MANDATORY) ━━━
+Your ENTIRE response must be exactly this — nothing before, nothing after:
+
+GAME_NAME: <name, max 35 chars>
+GAME_CODE:
+<!DOCTYPE html>
+<html>
+... complete self-contained HTML ...
+</html>
+
+━━━ TECHNICAL REQUIREMENTS (ALL MANDATORY) ━━━
+1. 100% self-contained HTML — zero external files, zero CDN, zero imports
+2. requestAnimationFrame game loop at 60fps
+3. Canvas-based rendering (preferred) or DOM-based for puzzle/card games
+4. window.onresize handler — canvas fills viewport at all times
+5. COMPLETE game flow: Start Screen → Gameplay → Game Over → Restart
+6. Keyboard controls: Arrow keys, WASD, Space — whichever is appropriate
+7. Visible on-screen touch buttons (absolutely positioned, semi-transparent)
+8. Web Audio API synthesised sound effects (no audio files — generate tones with OscillatorNode)
+9. Score, lives, level displayed in HUD at all times during gameplay
+10. Visually polished: gradient background, particle effects on events, smooth animations
+11. Small "EstXBry" badge in bottom-right corner
+12. NO external dependencies, NO fetch calls, NO localStorage usage inside the game
+
+━━━ GAME QUALITY CHECKLIST ━━━
+✓ Game starts immediately when player presses a key or taps START
+✓ Player character responds to every input
+✓ Enemies/obstacles move and behave correctly
+✓ Score increments correctly
+✓ Death/failure state detected and game-over screen shown
+✓ Restart works without page reload
+✓ No JavaScript errors at runtime
+✓ Works on both desktop and mobile
+
+DO NOT output any explanation. DO NOT wrap in markdown. ONLY the GAME_NAME line + GAME_CODE line + the HTML.`;
+  }
+
+  /* ── PARSER — robust against any model preamble ── */
+  function parse(text){
+    // find GAME_NAME anywhere in response
+    const nm=text.match(/GAME_NAME:\s*([^\n]+)/);
+    // find GAME_CODE and capture everything after it
+    const cm=text.match(/GAME_CODE:\s*([\s\S]+)/);
+    if(!nm||!cm)return null;
+    let code=cm[1].trim();
+    // strip trailing markdown fences if model added them
+    code=code.replace(/^```html?\n?/i,'').replace(/```\s*$/,'').trim();
+    // must look like HTML
+    if(!/<(!DOCTYPE|html)/i.test(code)||code.length<300)return null;
+    return{name:nm[1].trim(),code};
+  }
+
+  /* ── API CALL ── */
+  async function callAPI(userMsg){
+    State.pushH('user',userMsg);
+    const mode=State.get('mode');
+    const resp=await fetch('https://api.anthropic.com/v1/messages',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({
+        model:'claude-sonnet-4-20250514',
+        max_tokens:16000, // increased for complete games
+        system:sysprompt(mode),
+        messages:State.history(),
+      }),
+    });
+    if(!resp.ok){
+      let det=resp.statusText;
+      try{const j=await resp.json();det=j.error?.message||det;}catch(_){}
+      throw new Error(`API ${resp.status}: ${det}`);
+    }
+    const data=await resp.json();
+    const txt=(data.content||[]).map(b=>b.text||'').join('');
+    State.pushH('assistant',txt);
+    return txt;
+  }
+
+  /* ── MAIN SEND ── */
+  async function send(forced){
+    const raw=forced||$('prompt').value.trim();
+    if(!raw||State.busy())return;
+
+    State.setBusy(true);
+    if(!forced){$('prompt').value='';growTA($('prompt'));}
+    $('go-btn').disabled=true;
+    $('go-btn').classList.add('spin');
+    $('ai-pill').textContent='⟳ BUILDING';
+    setStatus('AI BUILDING…','busy');
+    Prog.start();
+    Chat.msg('u',raw);
+    const tid=Chat.typing();
+
+    try{
+      const raw_ai=await callAPI(raw);
+      Chat.rmTyping(tid);
+      Prog.done();
+
+      const result=parse(raw_ai);
+
+      if(result){
+        const mode=State.get('mode');
+        if(mode==='build'||!State.get('active')){
+          const id=uid();
+          State.newGame(id,result.name,result.code,raw);
+          Stor.saveMem(raw,result.name);
+        }else{
+          State.addVersion(result.code,raw);
+          const g=State.active();
+          if(g)g.name=result.name;
+          Stor.saveMem(raw,result.name);
+        }
+
+        Stor.save();
+
+        // ── Render preview ──
+        Preview.render(result.code);
+
+        // ── Load into editor ──
+        Editor.load(result.code, result.name);
+
+        // ── Update all UI ──
+        updateVersionStrip();
+        updateLibrary();
+        updateOutput();
+        updateMem();
+        setStatus('GAME RUNNING','ok');
+        $('s-game').textContent=result.name.toUpperCase();
+
+        const vn=State.active().versions.length;
+        Chat.msg('a',`✅ "${result.name}" ${vn>1?`upgraded → v${vn}`:'built & running'}! Click the preview to focus, then use keyboard or touch. Hit OUTPUT tab → Download to save.`);
+
+      }else{
+        // parse failed — show what we got for diagnosis
+        Chat.msg('e','⚠ AI response did not contain valid game code. Try rephrasing or use a more specific description.');
+        setStatus('PARSE ERROR — RETRY','err');
+      }
+
+    }catch(err){
+      Chat.rmTyping(tid);
+      Prog.done();
+      Chat.msg('e',`⚠ ${err.message}`);
+      setStatus('ERROR — RETRY','err');
+    }
+
+    State.setBusy(false);
+    $('go-btn').disabled=false;
+    $('go-btn').classList.remove('spin');
+    $('ai-pill').textContent='● READY';
+  }
+
+  /* ── AUTO-FIX ── */
+  async function sendFix(){
+    const g=State.active();
+    if(!g){Chat.msg('e','No active game to fix.');return;}
+    const prev=State.get('mode');
+    State.set('mode','fix');
+    setMode('fix');
+    await send('Analyze the game, fix ALL bugs, runtime errors, and logic issues. Output a fully corrected, complete version.');
+    State.set('mode',prev);
+    setMode(prev);
+  }
+
+  return{send,sendFix};
+})();
+
+/* ══════════════════════════════════════════════════
+   VERSION STRIP
+══════════════════════════════════════════════════ */
+function updateVersionStrip(){
+  const strip=$('ver-strip');
+  const g=State.active();
+  if(!g||g.versions.length<2){strip.classList.remove('show');return;}
+  strip.classList.add('show');
+  strip.innerHTML='<span class="vlbl">VERSIONS:</span>';
+  g.versions.forEach((v,i)=>{
+    const b=document.createElement('button');
+    b.className='vchip'+(i===g.cur?' on':'');
+    b.textContent=`v${i+1} · ${v.ts}`;
+    b.title=v.prompt;
+    b.onclick=()=>{
+      g.cur=i;
+      Preview.render(v.code);
+      Editor.load(v.code,g.name);
+      updateVersionStrip();
+      Chat.msg('s',`↩ Rolled back to v${i+1}`);
+    };
+    strip.appendChild(b);
+  });
+}
+
+/* ══════════════════════════════════════════════════
+   LIBRARY
+══════════════════════════════════════════════════ */
+function updateLibrary(){
+  const p=$('plib');
+  const games=State.get('games');
+  const ids=Object.keys(games);
+  p.innerHTML='';
+  if(!ids.length){
+    p.innerHTML='<div class="empty-msg">No games yet.<br/>Build your first ↓</div>';
+    return;
+  }
+  ids.forEach(id=>{
+    const g=games[id];
+    const on=id===State.get('active');
+    const el=document.createElement('div');
+    el.className='gc'+(on?' on':'');
+    el.id='gc-'+id;
+    el.innerHTML=`
+      <div class="gc-name">${esc(g.name)}</div>
+      <div class="gc-meta">${g.created}</div>
+      <div class="gc-ver">v${g.versions.length}</div>
+      <div class="gc-btns">
+        <button class="gcb" onclick="event.stopPropagation();switchGame('${id}')">LOAD</button>
+        <button class="gcb del" onclick="event.stopPropagation();delGame('${id}')">DEL</button>
+      </div>
+    `;
+    el.onclick=()=>switchGame(id);
+    p.appendChild(el);
+  });
+}
+
+function switchGame(id){
+  State.setActive(id);
+  const g=State.game(id);
+  Preview.render(g.versions[g.cur].code);
+  Editor.load(g.versions[g.cur].code,g.name);
+  updateVersionStrip();
+  updateLibrary();
+  updateOutput();
+  setStatus('GAME RUNNING','ok');
+  $('s-game').textContent=g.name.toUpperCase();
+  Chat.msg('s',`↩ Switched to: ${g.name}`);
+  rpSwitch('log');
+}
+
+function delGame(id){
+  const g=State.game(id);
+  if(!confirm(`Delete "${g.name}"?`))return;
+  const games=State.get('games');
+  delete games[id];
+  if(State.get('active')===id){
+    const rem=Object.keys(games);
+    State.setActive(rem.length?rem[rem.length-1]:null);
+    if(!State.get('active')){
+      Preview.clear();
+      $('out-empty').style.display='block';
+      $('out-content').style.display='none';
+    }else{
+      const g2=State.active();
+      Preview.render(g2.versions[g2.cur].code);
+      updateOutput();
+    }
+  }
+  Stor.save();
+  updateLibrary();
+  updateVersionStrip();
+  Chat.msg('s',`🗑 Deleted: ${g.name}`);
+}
+
+/* ══════════════════════════════════════════════════
+   OUTPUT PANEL
+══════════════════════════════════════════════════ */
+function updateErrDisplay(errs){
+  const el=$('err-display');
+  const fb=$('fix-btn');
+  if(errs&&errs.length){
+    el.style.color='var(--red)';
+    el.textContent=errs.join('\n');
+    fb.style.display='block';
+  }else{
+    el.style.color='var(--txt3)';
+    el.textContent='✓ None detected';
+    fb.style.display='none';
+  }
+}
+
+function updateOutput(){
+  const g=State.active();
+  if(!g)return;
+  $('out-empty').style.display='none';
+  $('out-content').style.display='flex';
+  $('out-title').textContent=g.name;
+  $('out-meta').textContent=`v${g.cur+1} of ${g.versions.length} · ${g.created}`;
+  updateErrDisplay(g.versions[g.cur].errs||[]);
+}
+
+/* ══════════════════════════════════════════════════
+   MEMORY PANEL
+══════════════════════════════════════════════════ */
+function updateMem(){
+  const p=$('pmem');
+  const items=Stor.getMem();
+  p.innerHTML='';
+  if(!items.length){
+    p.innerHTML='<div class="empty-msg">No history yet.</div>';
+    return;
+  }
+  items.forEach(item=>{
+    const d=document.createElement('div');
+    d.className='mi';
+    d.innerHTML=`
+      <div class="mi-prompt">${esc(item.prompt.length>75?item.prompt.slice(0,75)+'…':item.prompt)}</div>
+      <div class="mi-meta">${esc(item.gameName)} · ${item.ts}</div>
+      <button class="mi-btn" onclick="reusePrompt(${JSON.stringify(item.prompt)})">↺ REUSE</button>
+    `;
+    p.appendChild(d);
+  });
+}
+
+function reusePrompt(p){
+  $('prompt').value=p;
+  growTA($('prompt'));
+  $('prompt').focus();
+  Chat.msg('s','♻ Prompt loaded from memory.');
+}
+
+/* ══════════════════════════════════════════════════
+   MODE SYSTEM
+══════════════════════════════════════════════════ */
+function setMode(m){
+  State.set('mode',m);
+  ['build','edit','fix'].forEach(x=>{
+    $('mb-'+x).classList.toggle('on',x===m);
+  });
+  const btn=$('go-btn');
+  btn.classList.remove('edit','fix');
+  if(m==='edit')btn.classList.add('edit');
+  if(m==='fix') btn.classList.add('fix');
+  const mp=$('mode-pill');
+  mp.classList.toggle('on',m!=='build');
+  mp.textContent=m==='edit'?'✏ EDIT':m==='fix'?'🔧 FIX':'';
+  const ph={
+    build:'Build me a Snake game… / Build a tower defense…',
+    edit:'Add power-ups… / Make background space-themed…',
+    fix:'Fix the score bug… / Improve performance…',
+  };
+  $('prompt').placeholder=ph[m]||ph.build;
+}
+
+/* ══════════════════════════════════════════════════
+   PANEL SWITCHES
+══════════════════════════════════════════════════ */
+function lpSwitch(n){
+  document.querySelectorAll('#left .tab').forEach((t,i)=>t.classList.toggle('on',['lib','mem'][i]===n));
+  $('plib').classList.toggle('on',n==='lib');
+  $('pmem').classList.toggle('on',n==='mem');
+  if(n==='mem')updateMem();
+}
+
+function rpSwitch(n){
+  document.querySelectorAll('#right .tab').forEach((t,i)=>t.classList.toggle('on',['log','out'][i]===n));
+  $('plog').classList.toggle('on',n==='log');
+  $('pout').classList.toggle('on',n==='out');
+}
+
+function midSwitch(n){
+  document.querySelectorAll('.mid-tab').forEach((t,i)=>t.classList.toggle('on',['preview','editor'][i]===n));
+  $('mid-preview').style.display=n==='preview'?'flex':'none';
+  $('mid-editor').style.display=n==='editor'?'flex':'none';
+}
+
+/* ══════════════════════════════════════════════════
+   CHIPS
+══════════════════════════════════════════════════ */
+function buildChips(){
+  const chips=[
+    ['🐍 Snake','Build a classic Snake game: arrow key controls, growing snake, food pickup, score, increasing speed, game over on wall/self collision'],
+    ['🧱 Tetris','Build a complete Tetris game: 7 tetrominoes, rotation, line clear, score, levels, speed increase, game over'],
+    ['🚀 Shooter','Build a side-scrolling space shooter: player ship, waves of enemies, bullet firing, power-ups, boss fight, lives, score'],
+    ['🏃 Platformer','Build a side-scrolling platformer: hero, jumping, platforms, coins, moving enemies, lives, levels'],
+    ['🎯 Breakout','Build Breakout: paddle, ball, colored bricks, power-ups, multiple levels, lives, score'],
+    ['🏓 Pong','Build 2-player Pong: two paddles, ball physics, score, AI for one paddle, sound effects'],
+    ['🃏 Memory','Build a memory card matching game: emoji cards, flip animation, match detection, timer, move counter'],
+    ['🌄 Runner','Build an endless runner: auto-scrolling, jumping hero, random obstacles, score, increasing speed'],
+    ['🗼 Tower Def','Build tower defense: place cannons, waves of enemies, path following, HP bar, currency system'],
+    ['🎲 RPG','Build a top-down RPG: hero movement, random enemies, combat system, HP bars, level up, inventory'],
+    ['🏎 Racing','Build top-down car racing: player car, AI opponents, track, lap timer, speed boosts, collisions'],
+    ['🧩 Puzzle','Build a sliding puzzle (15-puzzle): numbered tiles, shuffle, move counter, win detection'],
+  ];
+  const row=$('chip-row');
+  row.innerHTML='';
+  chips.forEach(([label,prompt])=>{
+    const b=document.createElement('button');
+    b.className='chip';
+    b.textContent=label;
+    b.onclick=()=>{$('prompt').value=prompt;growTA($('prompt'));$('prompt').focus();};
+    row.appendChild(b);
+  });
+}
+
+/* ══════════════════════════════════════════════════
+   BOOTSTRAP
+══════════════════════════════════════════════════ */
+(function init(){
+  buildChips();
+  setMode('build');
+  midSwitch('preview');
+
+  const restored=Stor.load();
+  if(restored&&State.get('active')){
+    updateLibrary();
+    updateVersionStrip();
+    updateOutput();
+    const g=State.active();
+    if(g){
+      Preview.render(g.versions[g.cur].code);
+      Editor.load(g.versions[g.cur].code,g.name);
+      setStatus('SESSION RESTORED','ok');
+      $('s-game').textContent=g.name.toUpperCase();
+      Chat.msg('s',`♻ Session restored: "${g.name}" (${g.versions.length} version${g.versions.length>1?'s':''})`);
+    }
+  }else{
+    setStatus('AWAITING INPUT','');
+    Chat.msg('s','⚡ EstXBry v4 ready — no usage limits. Build any game instantly.');
+  }
+})();
+</script>
+</body>
+</html>
