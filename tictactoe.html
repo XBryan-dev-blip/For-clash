@@ -1,0 +1,487 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>TTT</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Mono:wght@700&display=swap" rel="stylesheet">
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+
+:root {
+  --bg:      #0a0a0f;
+  --surface: #13131a;
+  --border:  #1e1e2a;
+  --muted:   #3a3a4a;
+  --text:    #e8e8f0;
+  --dim:     #5a5a70;
+  --cx:      #4fffb0;
+  --co:      #ff4f7b;
+  --cd:      #7c6fff;
+}
+
+html, body {
+  height: 100%;
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Inter', sans-serif;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+body::before {
+  content: '';
+  position: fixed; inset: 0;
+  background-image: radial-gradient(circle, #ffffff06 1px, transparent 1px);
+  background-size: 28px 28px;
+  pointer-events: none;
+}
+
+/* ── SHELL ── */
+.app {
+  width: min(400px, 96vw);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 20px 18px 16px;
+  position: relative;
+  z-index: 1;
+}
+
+/* ── HEADER ── */
+header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.logo {
+  font-family: 'Space Mono', monospace;
+  font-size: 1rem;
+  letter-spacing: 0.04em;
+}
+.logo span { color: var(--cx); }
+
+.pill-group {
+  display: flex;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 3px;
+  gap: 2px;
+}
+.pill {
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  padding: 5px 11px;
+  border-radius: 5px;
+  border: none;
+  background: none;
+  color: var(--dim);
+  cursor: pointer;
+  transition: background 0.12s, color 0.12s;
+}
+.pill.on { background: var(--border); color: var(--text); }
+
+/* ── SCORES ── */
+.scores {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: 8px;
+}
+.score-tile {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 10px 8px;
+  text-align: center;
+  transition: border-color 0.18s, box-shadow 0.18s;
+}
+.score-tile.ax { border-color: var(--cx); box-shadow: 0 0 14px #4fffb022; }
+.score-tile.ao { border-color: var(--co); box-shadow: 0 0 14px #ff4f7b22; }
+.score-tag { font-size: 0.58rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--dim); margin-bottom: 3px; }
+.score-tag.x { color: var(--cx); }
+.score-tag.o { color: var(--co); }
+.score-val { font-family: 'Space Mono', monospace; font-size: 1.6rem; line-height: 1; }
+.score-val.x { color: var(--cx); }
+.score-val.o { color: var(--co); }
+.mid { display: flex; flex-direction: column; align-items: center; gap: 1px; }
+.mid-lbl { font-size: 0.52rem; letter-spacing: 0.12em; color: var(--muted); text-transform: uppercase; }
+.mid-val { font-family: 'Space Mono', monospace; font-size: 0.95rem; color: var(--muted); }
+
+/* ── STATUS ── */
+.status {
+  text-align: center;
+  font-size: 0.78rem;
+  font-weight: 500;
+  letter-spacing: 0.05em;
+  color: var(--dim);
+  height: 16px;
+}
+.status .x { color: var(--cx); font-weight: 700; }
+.status .o { color: var(--co); font-weight: 700; }
+
+/* ── BOARD ── */
+.board {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  grid-template-rows: repeat(3, 1fr);
+  gap: 5px;
+  width: 100%;
+  aspect-ratio: 1;
+}
+.cell {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: border-color 0.1s, background 0.1s;
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+}
+.cell:hover:not(.taken) { background: #16161f; border-color: var(--muted); }
+.cell.taken { cursor: default; }
+.cell.wx { background: #4fffb00d; border-color: var(--cx); }
+.cell.wo { background: #ff4f7b0d; border-color: var(--co); }
+
+/* marks */
+.mk-x {
+  width: 38%; height: 38%; position: relative;
+  animation: pop .18s cubic-bezier(.34,1.56,.64,1) both;
+}
+.mk-x::before, .mk-x::after {
+  content: ''; position: absolute;
+  left: 0; top: 50%; width: 100%; height: 3px;
+  background: var(--cx); border-radius: 3px;
+  box-shadow: 0 0 8px #4fffb088;
+}
+.mk-x::before { transform: translateY(-50%) rotate(45deg); }
+.mk-x::after  { transform: translateY(-50%) rotate(-45deg); }
+.mk-o {
+  width: 36%; height: 36%; border-radius: 50%;
+  border: 3px solid var(--co);
+  box-shadow: 0 0 8px #ff4f7b88;
+  animation: pop .18s cubic-bezier(.34,1.56,.64,1) both;
+}
+@keyframes pop {
+  0%   { transform: scale(0.3); opacity: 0; }
+  70%  { transform: scale(1.08); }
+  100% { transform: scale(1);   opacity: 1; }
+}
+
+/* ── DIFF ── */
+.diff-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  height: 26px;
+}
+.diff-lbl { font-size: 0.62rem; color: var(--dim); letter-spacing: 0.08em; text-transform: uppercase; }
+.diff-btns { display: flex; gap: 3px; }
+.dbtn {
+  font-size: 0.62rem; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase;
+  padding: 4px 10px; border-radius: 5px;
+  border: 1px solid var(--border); background: none; color: var(--dim);
+  cursor: pointer; transition: all 0.12s;
+}
+.dbtn.on { border-color: var(--cd); color: var(--cd); background: #7c6fff12; }
+
+/* ── CONTROLS ── */
+.controls { display: flex; gap: 7px; }
+.btn {
+  flex: 1; font-family: 'Inter', sans-serif;
+  font-size: 0.73rem; font-weight: 600; letter-spacing: 0.04em;
+  padding: 10px; border-radius: 8px;
+  border: 1px solid var(--border); background: var(--surface); color: var(--dim);
+  cursor: pointer; transition: all 0.12s;
+}
+.btn:hover { border-color: var(--muted); color: var(--text); }
+.btn.primary { border-color: var(--cx); color: var(--cx); background: #4fffb00e; }
+.btn.primary:hover { background: #4fffb01c; }
+
+/* ── HISTORY ── */
+.history {
+  display: flex; align-items: center; gap: 6px;
+  justify-content: center; min-height: 16px;
+}
+.h-lbl { font-size: 0.58rem; color: var(--muted); letter-spacing: 0.1em; text-transform: uppercase; }
+.h-dots { display: flex; gap: 4px; }
+.h-dot {
+  width: 7px; height: 7px; border-radius: 50%;
+  animation: dotIn .15s ease both;
+}
+@keyframes dotIn { from { transform: scale(0); } to { transform: scale(1); } }
+.h-dot.x { background: var(--cx); }
+.h-dot.o { background: var(--co); }
+.h-dot.d { background: var(--muted); }
+
+/* ── TOAST ── */
+.toast {
+  position: fixed;
+  bottom: 24px; left: 50%;
+  transform: translateX(-50%) translateY(16px);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 14px 24px;
+  text-align: center;
+  opacity: 0; pointer-events: none;
+  transition: transform 0.22s cubic-bezier(.34,1.56,.64,1), opacity 0.18s;
+  z-index: 100;
+  min-width: 190px;
+  box-shadow: 0 10px 40px #00000055;
+}
+.toast.show { opacity: 1; transform: translateX(-50%) translateY(0); pointer-events: all; }
+.toast-title { font-family: 'Space Mono', monospace; font-size: 1rem; font-weight: 700; margin-bottom: 2px; }
+.toast-sub { font-size: 0.7rem; color: var(--dim); margin-bottom: 12px; }
+.toast-btn {
+  font-family: 'Inter', sans-serif;
+  font-size: 0.72rem; font-weight: 700; letter-spacing: 0.06em;
+  padding: 7px 18px; border-radius: 7px; border: none; cursor: pointer;
+  transition: opacity 0.12s;
+}
+.toast-btn:hover { opacity: 0.82; }
+.toast.tx .toast-title { color: var(--cx); }
+.toast.to .toast-title { color: var(--co); }
+.toast.td .toast-title { color: var(--cd); }
+.toast.tx .toast-btn { background: var(--cx); color: #000; }
+.toast.to .toast-btn { background: var(--co); color: #fff; }
+.toast.td .toast-btn { background: var(--cd); color: #fff; }
+</style>
+</head>
+<body>
+
+<div class="app">
+  <header>
+    <div class="logo">ttt<span>.</span></div>
+    <div class="pill-group">
+      <button class="pill on" id="btnHH" onclick="setMode('hh')">2 Player</button>
+      <button class="pill"    id="btnAI" onclick="setMode('ai')">vs AI</button>
+    </div>
+  </header>
+
+  <div class="scores">
+    <div class="score-tile ax" id="tileX">
+      <div class="score-tag x">X</div>
+      <div class="score-val x" id="sX">0</div>
+    </div>
+    <div class="mid">
+      <div class="mid-lbl">draws</div>
+      <div class="mid-val" id="sD">0</div>
+    </div>
+    <div class="score-tile" id="tileO">
+      <div class="score-tag o">O</div>
+      <div class="score-val o" id="sO">0</div>
+    </div>
+  </div>
+
+  <div class="status" id="status"><span class="x">X</span>&nbsp;to play</div>
+
+  <div class="board" id="board"></div>
+
+  <div class="diff-row" id="diffRow" style="visibility:hidden">
+    <span class="diff-lbl">AI</span>
+    <div class="diff-btns">
+      <button class="dbtn on"  onclick="setDiff('easy')">Easy</button>
+      <button class="dbtn"     onclick="setDiff('medium')">Med</button>
+      <button class="dbtn"     onclick="setDiff('hard')">Hard</button>
+    </div>
+  </div>
+
+  <div class="controls">
+    <button class="btn primary" onclick="newGame()">New Game</button>
+    <button class="btn"         onclick="resetAll()">Reset All</button>
+  </div>
+
+  <div class="history">
+    <span class="h-lbl">History</span>
+    <div class="h-dots" id="hdots"></div>
+  </div>
+</div>
+
+<div class="toast" id="toast">
+  <div class="toast-title" id="tTitle"></div>
+  <div class="toast-sub"   id="tSub"></div>
+  <button class="toast-btn" onclick="newGame()">Play again</button>
+</div>
+
+<script>
+// STATE
+let b = Array(9).fill(null);
+let turn = 'X', over = false, mode = 'hh', diff = 'easy';
+let sc = {X:0,O:0,D:0}, hist = [], aiLocked = false;
+
+const WIN = [[0,1,2],[3,4,5],[6,7,8],[0,3,6],[1,4,7],[2,5,8],[0,4,8],[2,4,6]];
+
+function build() {
+  const el = document.getElementById('board');
+  el.innerHTML = '';
+  for (let i = 0; i < 9; i++) {
+    const c = document.createElement('div');
+    c.className = 'cell';
+    c.addEventListener('click', () => tap(i));
+    el.appendChild(c);
+  }
+}
+
+function tap(i) {
+  if (over || b[i] || aiLocked) return;
+  if (mode === 'ai' && turn === 'O') return;
+  move(i, turn);
+}
+
+function move(i, p) {
+  b[i] = p;
+  const cell = cells()[i];
+  cell.classList.add('taken');
+  const m = document.createElement('div');
+  m.className = p === 'X' ? 'mk-x' : 'mk-o';
+  cell.appendChild(m);
+
+  const win = getWin();
+  if (win) { end(p, win); return; }
+  if (b.every(Boolean)) { end(null); return; }
+
+  turn = p === 'X' ? 'O' : 'X';
+  setStatus();
+  setTiles();
+  if (mode === 'ai' && turn === 'O' && !over) scheduleAI();
+}
+
+function end(winner, line) {
+  over = true;
+  if (winner) {
+    sc[winner]++;
+    line.forEach(i => cells()[i].classList.add(winner === 'X' ? 'wx' : 'wo'));
+    hist.push(winner);
+    toast(winner);
+  } else {
+    sc.D++;
+    hist.push('D');
+    toast(null);
+  }
+  document.getElementById('sX').textContent = sc.X;
+  document.getElementById('sO').textContent = sc.O;
+  document.getElementById('sD').textContent = sc.D;
+  addDot(hist[hist.length-1]);
+}
+
+function setStatus() {
+  const bar = document.getElementById('status');
+  if (over) { bar.textContent = ''; return; }
+  const aiTurn = mode === 'ai' && turn === 'O';
+  bar.innerHTML = aiTurn
+    ? `<span class="o">AI</span>&nbsp;thinking…`
+    : `<span class="${turn.toLowerCase()}">${turn}</span>&nbsp;to play`;
+}
+
+function setTiles() {
+  document.getElementById('tileX').className = 'score-tile' + (!over && turn==='X' ? ' ax' : '');
+  document.getElementById('tileO').className = 'score-tile' + (!over && turn==='O' ? ' ao' : '');
+}
+
+// AI
+function scheduleAI() {
+  aiLocked = true;
+  const ms = diff === 'easy' ? 140 : diff === 'medium' ? 240 : 320;
+  setTimeout(() => { aiLocked = false; move(pick(), 'O'); }, ms);
+}
+
+function pick() {
+  if (diff === 'easy')   return easyPick();
+  if (diff === 'medium') return Math.random() < 0.55 ? easyPick() : mm([...b],'O').i;
+  return mm([...b],'O').i;
+}
+
+function easyPick() {
+  const e = emp(b);
+  for (const l of WIN) {
+    const [a,c,d] = l, v = [b[a],b[c],b[d]];
+    if (v.filter(x=>x==='O').length===2 && v.includes(null)) return l[v.indexOf(null)];
+  }
+  for (const l of WIN) {
+    const [a,c,d] = l, v = [b[a],b[c],b[d]];
+    if (v.filter(x=>x==='X').length===2 && v.includes(null)) return l[v.indexOf(null)];
+  }
+  return e[Math.floor(Math.random()*e.length)];
+}
+
+function mm(board, p, depth=0) {
+  const w = winB(board);
+  if (w==='O') return {s:10-depth};
+  if (w==='X') return {s:depth-10};
+  const e = emp(board);
+  if (!e.length) return {s:0};
+  const r = e.map(i => { board[i]=p; const s=mm(board,p==='O'?'X':'O',depth+1).s; board[i]=null; return {i,s}; });
+  return p==='O' ? r.reduce((a,c)=>c.s>a.s?c:a) : r.reduce((a,c)=>c.s<a.s?c:a);
+}
+
+function emp(board) { return board.map((v,i)=>v?null:i).filter(x=>x!==null); }
+function winB(board) { for(const[a,c,d]of WIN) if(board[a]&&board[a]===board[c]&&board[a]===board[d]) return board[a]; return null; }
+function getWin() { for(const l of WIN){const[a,c,d]=l;if(b[a]&&b[a]===b[c]&&b[a]===b[d])return l;} return null; }
+function cells() { return document.querySelectorAll('.cell'); }
+
+// TOAST
+function toast(winner) {
+  const t=document.getElementById('toast'), ti=document.getElementById('tTitle'), ts=document.getElementById('tSub');
+  t.className='toast '+(winner?(winner==='X'?'tx':'to'):'td');
+  if(winner==='X'){ti.textContent='X wins';ts.textContent='Dominant play';}
+  else if(winner==='O'){ti.textContent='O wins';ts.textContent=mode==='ai'?'AI takes it':'Well played';}
+  else{ti.textContent='Draw';ts.textContent='No winner';}
+  setTimeout(()=>t.classList.add('show'),80);
+}
+function hideToast(){document.getElementById('toast').classList.remove('show');}
+
+// HISTORY
+function addDot(r){
+  const w=document.getElementById('hdots');
+  if(w.children.length>=10)w.removeChild(w.firstChild);
+  const d=document.createElement('div');
+  d.className='h-dot '+r.toLowerCase();
+  w.appendChild(d);
+}
+
+// GAME CONTROL
+function newGame(){
+  hideToast();
+  b=Array(9).fill(null); turn='X'; over=false; aiLocked=false;
+  build(); setStatus();
+  document.getElementById('tileX').className='score-tile ax';
+  document.getElementById('tileO').className='score-tile';
+}
+
+function resetAll(){
+  sc={X:0,O:0,D:0}; hist=[];
+  document.getElementById('sX').textContent=0;
+  document.getElementById('sO').textContent=0;
+  document.getElementById('sD').textContent=0;
+  document.getElementById('hdots').innerHTML='';
+  newGame();
+}
+
+function setMode(m){
+  mode=m;
+  document.getElementById('btnHH').classList.toggle('on',m==='hh');
+  document.getElementById('btnAI').classList.toggle('on',m==='ai');
+  document.getElementById('diffRow').style.visibility=m==='ai'?'visible':'hidden';
+  newGame();
+}
+
+function setDiff(d){
+  diff=d;
+  document.querySelectorAll('.dbtn').forEach(b=>{
+    b.classList.toggle('on',b.textContent.toLowerCase().startsWith(d.slice(0,3)));
+  });
+}
+
+build();
+</script>
+</body>
+</html>
